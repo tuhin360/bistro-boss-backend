@@ -34,10 +34,16 @@ async function run() {
     // users related APIs
     app.post("/users", async (req, res) => {
       const user = req.body;
+      // insert email if not exists
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "User already exists" });
+      }
+
       const result = await userCollection.insertOne(user);
       res.send(result);
     });
-
 
     app.get("/menu", async (req, res) => {
       const result = await menuCollection.find().toArray();
@@ -47,15 +53,14 @@ async function run() {
     app.get("/reviews", async (req, res) => {
       const result = await reviewCollection.find().toArray();
       res.send(result);
-      
     });
     // carts collection
     app.get("/carts", async (req, res) => {
       const email = req.query.email;
-      const query = {email: email};
+      const query = { email: email };
       const result = await cartCollection.find(query).toArray();
       res.send(result);
-    })
+    });
 
     app.post("/carts", async (req, res) => {
       const cartItem = req.body;
@@ -63,12 +68,12 @@ async function run() {
       res.send(result);
     });
 
-    app.delete('/carts/:id',async (req, res) =>{
+    app.delete("/carts/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await cartCollection.deleteOne(query);
       res.send(result);
-    })
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
