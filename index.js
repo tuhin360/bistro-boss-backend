@@ -208,6 +208,15 @@ async function run() {
       });
     });
 
+    app.get("/payments/:email", verifyToken, async (req, res) => {
+      const query = { email: req.params.email };
+      if (req.decoded.email !== req.params.email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       console.log("payment.cartIds", payment.cartIds);
@@ -228,13 +237,11 @@ async function run() {
         });
       } catch (err) {
         console.error("Error processing payment:", err);
-        res
-          .status(500)
-          .json({
-            success: false,
-            message: "Server error",
-            error: err.message,
-          });
+        res.status(500).json({
+          success: false,
+          message: "Server error",
+          error: err.message,
+        });
       }
     });
 
