@@ -211,13 +211,31 @@ async function run() {
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       console.log("payment.cartIds", payment.cartIds);
+      try {
+        // Payment save
+        const insertResult = await paymentCollection.insertOne(payment);
 
-      const insertResult = await paymentCollection.insertOne(payment);
-      const query = {
-        _id: { $in: payment.cartIds.map((id) => new ObjectId(id)) },
-      };
-      const deleteResult = await cartCollection.deleteMany(query);
-      res.send({ insertResult, deleteResult });
+        // Cart clear
+        const query = {
+          _id: { $in: payment.cartIds.map((id) => new ObjectId(id)) },
+        };
+        const deleteResult = await cartCollection.deleteMany(query);
+
+        res.send({
+          success: true,
+          paymentInsertedId: insertResult.insertedId,
+          deletedCartCount: deleteResult.deletedCount,
+        });
+      } catch (err) {
+        console.error("Error processing payment:", err);
+        res
+          .status(500)
+          .json({
+            success: false,
+            message: "Server error",
+            error: err.message,
+          });
+      }
     });
 
     // Send a ping to confirm a successful connection
