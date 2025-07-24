@@ -245,8 +245,8 @@ async function run() {
       }
     });
 
-    // stats or analytics related APIs
-    app.get("/admin-stats", verifyToken, verifyAdmin,  async (req, res) => {
+    // admin stats or analytics related APIs
+    app.get("/admin-stats", async (req, res) => {
       const users = await userCollection.estimatedDocumentCount();
       const menuItems = await menuCollection.estimatedDocumentCount();
       const orders = await paymentCollection.estimatedDocumentCount();
@@ -265,8 +265,46 @@ async function run() {
         users,
         menuItems,
         orders,
-        revenueAmount
+        revenueAmount,
       });
+    });
+
+    // using aggregate to get the number of orders by category
+    app.get("/order-stats", async (req, res) => {
+      const result = await paymentCollection
+        .aggregate([
+          {
+            $unwind: "$menuIds",
+          },
+          {
+            $lookup: {
+              from: "menu",
+              localField: "menuIds",
+              foreignField: "_id",
+              as: "menuItems",
+            },
+          },
+          {
+            $unwind: "$menuItems",
+          },
+          {
+            $group: {
+              _id: "$menuItems.category",
+              quantity: { $sum: 1 },
+              revenue: { $sum: "$menuItems.price" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              category: "$_id",
+              quantity: "$quantity",
+              revenue: "$revenue",
+            },
+          },
+        ])
+        .toArray();
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
