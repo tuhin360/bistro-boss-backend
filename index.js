@@ -26,7 +26,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const userCollection = client.db("bistroDb").collection("users");
     const menuCollection = client.db("bistroDb").collection("menu");
@@ -195,6 +195,25 @@ async function run() {
     });
 
     // payment related APIs
+    app.get("/payments", async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result);
+    });
+
+    // PUT: Update payment status
+    app.put("/payments/:id", async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
+      
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: { status: status || "done" },
+      };
+
+      const result = await paymentCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100);
@@ -308,10 +327,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
