@@ -173,6 +173,13 @@ async function run() {
       const result = await reviewCollection.find().toArray();
       res.send(result);
     });
+
+    app.post("/reviews", async (req, res) => {
+      const review = req.body;
+      const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    })
+    
     // carts collection
     app.get("/carts", async (req, res) => {
       const email = req.query.email;
