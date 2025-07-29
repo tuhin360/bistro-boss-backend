@@ -33,6 +33,7 @@ async function run() {
     const reviewCollection = client.db("bistroDb").collection("reviews");
     const cartCollection = client.db("bistroDb").collection("carts");
     const paymentCollection = client.db("bistroDb").collection("payments");
+    const reservationCollection = client.db("bistroDb").collection("reservations");
 
     // jwt related APIs
     app.post("/jwt", (req, res) => {
@@ -178,8 +179,8 @@ async function run() {
       const review = req.body;
       const result = await reviewCollection.insertOne(review);
       res.send(result);
-    })
-    
+    });
+
     // carts collection
     app.get("/carts", async (req, res) => {
       const email = req.query.email;
@@ -211,7 +212,7 @@ async function run() {
     app.put("/payments/:id", async (req, res) => {
       const id = req.params.id;
       const { status } = req.body;
-      
+
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: { status: status || "done" },
@@ -330,6 +331,13 @@ async function run() {
           },
         ])
         .toArray();
+      res.send(result);
+    });
+
+    // reservations related APIs
+    app.post("/reservations", async (req, res) => {
+      const reservation = req.body;
+      const result = await reservationCollection.insertOne(reservation);
       res.send(result);
     });
 
