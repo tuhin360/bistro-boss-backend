@@ -33,7 +33,9 @@ async function run() {
     const reviewCollection = client.db("bistroDb").collection("reviews");
     const cartCollection = client.db("bistroDb").collection("carts");
     const paymentCollection = client.db("bistroDb").collection("payments");
-    const reservationCollection = client.db("bistroDb").collection("reservations");
+    const reservationCollection = client
+      .db("bistroDb")
+      .collection("reservations");
 
     // jwt related APIs
     app.post("/jwt", (req, res) => {
@@ -338,6 +340,11 @@ async function run() {
     app.post("/reservations", async (req, res) => {
       const reservation = req.body;
       const result = await reservationCollection.insertOne(reservation);
+      res.send(result);
+    });
+
+    app.get("/reservations", async (req, res) => {
+      const result = await reservationCollection.find().toArray();
       res.send(result);
     });
 
