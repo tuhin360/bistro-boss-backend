@@ -172,15 +172,44 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/reviews", async (req, res) => {
-      const result = await reviewCollection.find().toArray();
-      res.send(result);
-    });
+    // app.get("/reviews", async (req, res) => {
+    //   const result = await reviewCollection.find().toArray();
+    //   res.send(result);
+    // });
 
     app.post("/reviews", async (req, res) => {
       const review = req.body;
       const result = await reviewCollection.insertOne(review);
       res.send(result);
+    });
+
+    //Filter reviews by user's email
+    app.get("/reviews", async (req, res) => {
+      try {
+        const email = req.query.email;
+
+        // If email parameter exists (user wants their own reviews)
+        if (email) {
+          // Protected route - requires authentication
+          const token = req.headers.authorization?.split(" ")[1];
+          if (!token) return res.status(401).send({ message: "Unauthorized" });
+
+          const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+          if (decoded.email !== email) {
+            return res.status(403).send({ message: "Forbidden access" });
+          }
+
+          const userReviews = await reviewCollection.find({ email }).toArray();
+          return res.send(userReviews);
+        }
+
+        // No email parameter (public route - get all reviews)
+        const allReviews = await reviewCollection.find().toArray();
+        res.send(allReviews);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Server error" });
+      }
     });
 
     // carts collection
@@ -248,15 +277,16 @@ async function run() {
 
     app.post("/payments", async (req, res) => {
       const payment = req.body;
-      console.log("payment.cartIds", payment.cartIds);
+      // console.log("payment.cartIds", payment.email);
       try {
-        // Payment save
+        // Payment save in database
         const insertResult = await paymentCollection.insertOne(payment);
 
-        // Cart clear
+        // Delete each item from cart
         const query = {
           _id: { $in: payment.cartIds.map((id) => new ObjectId(id)) },
         };
+
         const deleteResult = await cartCollection.deleteMany(query);
 
         res.send({
@@ -343,8 +373,18 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/reservations", async (req, res) => {
-      const result = await reservationCollection.find().toArray();
+    // Filter reservations by user's email
+    app.get("/reservations", verifyToken, async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        return res.status(400).send({ message: "Email is required" });
+      }
+      // Ensure the requesting user can only access their own reservations
+      if (req.decoded.email !== email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+      const query = { email: email };
+      const result = await reservationCollection.find(query).toArray();
       res.send(result);
     });
 
