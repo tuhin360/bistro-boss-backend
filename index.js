@@ -38,6 +38,8 @@ async function run() {
       .collection("reservations");
 
     // jwt related APIs
+
+    // Generate a JWT token for a user
     app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
@@ -74,11 +76,14 @@ async function run() {
     };
 
     // users related APIs
+
+    // Get all users (admin only)
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
+    // Check if a user is admin
     app.get("/users/admin/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       if (email !== req.decoded.email) {
@@ -93,6 +98,7 @@ async function run() {
       res.send({ admin });
     });
 
+    // Delete a user (admin only)
     app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -100,6 +106,7 @@ async function run() {
       res.send(result);
     });
 
+    // Promote user to admin (admin only)
     app.patch(
       "/users/admin/:id",
       verifyToken,
@@ -117,25 +124,27 @@ async function run() {
       }
     );
 
+    // Create a new user if not already exists
     app.post("/users", async (req, res) => {
       const user = req.body;
-      // insert email if not exists
       const query = { email: user.email };
       const existingUser = await userCollection.findOne(query);
       if (existingUser) {
         return res.send({ message: "User already exists" });
       }
-
       const result = await userCollection.insertOne(user);
       res.send(result);
     });
 
     // menu related APIs
+
+    // Get all menu items
     app.get("/menu", async (req, res) => {
       const result = await menuCollection.find().toArray();
       res.send(result);
     });
 
+    // Get a specific menu item by ID
     app.get("/menu/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -143,12 +152,14 @@ async function run() {
       res.send(menuItem);
     });
 
+    // Add a new menu item (admin only)
     app.post("/menu", verifyToken, verifyAdmin, async (req, res) => {
       const menuItem = req.body;
       const result = await menuCollection.insertOne(menuItem);
       res.send(result);
     });
 
+    // Delete a menu item (admin only)
     app.delete("/menu/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -156,6 +167,7 @@ async function run() {
       res.send(result);
     });
 
+    // Update a menu item (admin only)
     app.patch("/menu/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -172,17 +184,16 @@ async function run() {
       res.send(result);
     });
 
-    // app.get("/reviews", async (req, res) => {
-    //   const result = await reviewCollection.find().toArray();
-    //   res.send(result);
-    // });
+    // Reviews Related APIs
 
+    // Add a new review
     app.post("/reviews", async (req, res) => {
       const review = req.body;
       const result = await reviewCollection.insertOne(review);
       res.send(result);
     });
 
+    // Get all reviews or reviews by user (protected)
     //Filter reviews by user's email
     app.get("/reviews", async (req, res) => {
       try {
@@ -190,7 +201,7 @@ async function run() {
 
         // If email parameter exists (user wants their own reviews)
         if (email) {
-          // Protected route - requires authentication
+          // Verify token for user's own reviews
           const token = req.headers.authorization?.split(" ")[1];
           if (!token) return res.status(401).send({ message: "Unauthorized" });
 
@@ -212,7 +223,9 @@ async function run() {
       }
     });
 
-    // carts collection
+    // Carts Related APIs
+
+    // Get all cart items for a user
     app.get("/carts", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
@@ -220,12 +233,14 @@ async function run() {
       res.send(result);
     });
 
+    // Add an item to cart
     app.post("/carts", async (req, res) => {
       const cartItem = req.body;
       const result = await cartCollection.insertOne(cartItem);
       res.send(result);
     });
 
+    // Remove an item from cart
     app.delete("/carts/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -233,7 +248,9 @@ async function run() {
       res.send(result);
     });
 
-    // payment related APIs
+    // Payments Related APIs
+
+    // Get all payments
     app.get("/payments", async (req, res) => {
       const result = await paymentCollection.find().toArray();
       res.send(result);
@@ -253,6 +270,7 @@ async function run() {
       res.send(result);
     });
 
+    // Create Stripe payment intent
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100);
@@ -266,6 +284,7 @@ async function run() {
       });
     });
 
+    // Get all payments by email (protected)
     app.get("/payments/:email", verifyToken, async (req, res) => {
       const query = { email: req.params.email };
       if (req.decoded.email !== req.params.email) {
@@ -275,6 +294,7 @@ async function run() {
       res.send(result);
     });
 
+    // Record payment and clear cart
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       // console.log("payment.cartIds", payment.email);
@@ -304,7 +324,9 @@ async function run() {
       }
     });
 
-    // admin stats or analytics related APIs
+    // Admin Stats APIs
+
+    // Get total stats (users, menu, orders, revenue)
     app.get("/admin-stats", async (req, res) => {
       const users = await userCollection.estimatedDocumentCount();
       const menuItems = await menuCollection.estimatedDocumentCount();
@@ -328,6 +350,7 @@ async function run() {
       });
     });
 
+    // Get order count and revenue by category
     // using aggregate to get the number of orders by category
     app.get("/order-stats", async (req, res) => {
       const result = await paymentCollection
@@ -366,7 +389,10 @@ async function run() {
       res.send(result);
     });
 
-    // reservations related APIs
+    
+    // Reservations Related APIs
+
+    // Add a reservation
     app.post("/reservations", async (req, res) => {
       const reservation = req.body;
       const result = await reservationCollection.insertOne(reservation);
